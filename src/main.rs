@@ -143,10 +143,17 @@ fn main() {
     };
 
     let interfaces = datalink::interfaces();
-    let interface = interfaces.into_iter()
+    let interface_option =  interfaces.into_iter()
         .filter(interface_match)
-        .next()
-        .unwrap();
+        .next();
+
+    let interface = match interface_option {
+        Some(i) => i,
+        None => {
+            println!("Invalid interface name");
+            std::process::exit(1)
+        }
+    };
 
     if interface.is_loopback() {
         println!("Aborting because chosen interface is a loopback interface.\nChoose a non-loopback interface.\n");
