@@ -120,6 +120,11 @@ fn main() {
             .value_name("FILE")
             .help("Write results to a file in CSV format")
         )
+        .arg(Arg::with_name("timeout")
+            .short("t")
+            .long("timeout")
+            .help("query timout (secs), max 100")
+            .default_value("2"))
         .get_matches();
 
     if matches.is_present("list") {
@@ -143,7 +148,7 @@ fn main() {
     };
 
     let interfaces = datalink::interfaces();
-    let interface_option =  interfaces.into_iter()
+    let interface_option = interfaces.into_iter()
         .filter(interface_match)
         .next();
 
@@ -178,7 +183,19 @@ fn main() {
 
     recv_arp_packets(interface.clone(), tx);
 
-    println!("[X] Sending ARP requests...");
+    let timeout_parsed = match matches.value_of("timeout").unwrap().parse::<u64>() {
+        Ok(t) if t > 100 => {
+            println!("Timeout value too long, using default 2 secs");
+            2
+        }
+        Ok(t) => t,
+        Err(_) => {
+            println!("Invalid timeout value. Using default 2 secs");    // TODO improve from default
+            2
+        }
+    };
+
+    println!("Sending ARP requests...");
 
     match source_network {
         &IpNetwork::V4(source_networkv4) => {
@@ -193,8 +210,8 @@ fn main() {
         }
         e => panic!("Error while attempting to get network for interface: {}", e)
     }
-    println!("[X] Collecting results...");
-    thread::sleep(Duration::from_secs(2));
+    println!("Waiting for {} secs...", timeout_parsed);
+    thread::sleep(Duration::from_secs(timeout_parsed));
     println!();
 
     let mut macs: HashSet<(Ipv4Addr, MacAddr)> = HashSet::new();
@@ -209,14 +226,14 @@ fn main() {
     }
 
     let mut x: Vec<(Ipv4Addr, MacAddr)> = macs.into_iter().collect::<Vec<_>>();
-    x.sort_by(|x,y| {
+    x.sort_by(|x, y| {
         x.0.cmp(&y.0)
     });
 
     let v = x.into_iter()
         .map(|x| {
-        row![x.0,x.1]
-    }).collect::<Vec<_>>();
+            row![x.0,x.1]
+        }).collect::<Vec<_>>();
 
     let mut table = Table::init(v);
     table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
