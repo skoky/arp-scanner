@@ -1,8 +1,4 @@
-extern crate clap;
-extern crate ipnetwork;
-extern crate pnet;
-#[macro_use]
-extern crate prettytable;
+#[macro_use]extern crate prettytable;  // TODO why use does ot work?
 
 use std::collections::HashSet;
 use std::fs::File;
